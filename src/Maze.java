@@ -64,15 +64,6 @@ class Edge {
     this.to = to;
     this.weight = weight;
   }
-
-
-  Edge compare(Edge that) {
-    if (that.weight > this.weight) {
-      return this;
-    } else {
-      return that;
-    }
-  }
 }
  
 class KruskalMaze {
@@ -130,10 +121,15 @@ class HashUtils<T> {
 
 class MazeGame extends World{
   ArrayList<ArrayList<Node>> mazeBoard;
+  HashMap<Node, Node> boardHash;
   ArrayList<Edge> kruskalEdges;
 
   public MazeGame(int x, int y, Random rand) {
+    //kruskalEdges and HashMap gets changed in makeConnectedBoard
+    this.kruskalEdges = new ArrayList<Edge>();
+    this.boardHash = new HashMap<Node, Node>();
     this.mazeBoard = this.makeConnectedBoard(x, y, rand);
+    this.makeMaze();
   }
   
   public MazeGame(int x, int y) {
@@ -143,6 +139,8 @@ class MazeGame extends World{
   //creates the board with x length and y height 
   //where each cell is connected to each neighboring cell through an 
   //edge with a random length anywhere from 0 to 99
+  //also adds each edge to kruskal's edges
+  //and makes every node in the hashmap equal to itself for Kruskal's algo later
   public ArrayList<ArrayList<Node>> makeConnectedBoard(int x, int y, Random rand) {
     ArrayList<ArrayList<Node>> result = new ArrayList<ArrayList<Node>>();
     for(int i = 0 ; i < y ; i +=1) {
@@ -150,6 +148,7 @@ class MazeGame extends World{
       for(int j = 0 ; j < x ; j +=1) {
         Node temp = new Node();
         rowI.add(temp);
+        this.boardHash.put(temp, temp);
         //kruskalEdges starts with all of the edges in the list
         if(i > 0) {
           this.kruskalEdges.add(temp.connect(result.get(i-1).get(j), rand.nextInt(100)));
@@ -168,8 +167,8 @@ class MazeGame extends World{
     this.kruskalEdges.sort(new CompareByWeight());
   }
   
-  public ArrayList<Edge> makeMaze {
-    
+  public void makeMaze() {
+    this.kruskalEdges = new KruskalMaze(this.boardHash, this.kruskalEdges).algorithm();
   }
   
 }
