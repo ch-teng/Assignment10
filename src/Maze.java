@@ -50,7 +50,16 @@ class Node {
     return new Edge(this, other, weight);
   }
   
-  
+  //returns true if this node is connected to the given node
+  //through any of its outedges
+  public boolean isConnected(Node other) {
+    for(Edge e : this.outedges) {
+      if(e.connects(this, other)) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
  
@@ -63,6 +72,12 @@ class Edge {
     this.from = from;
     this.to = to;
     this.weight = weight;
+  }
+  
+  
+  //returns true if this edge connects the two given Nodes
+  public boolean connects(Node n1, Node n2) {
+    return (this.from.equals(n1) && this.to.equals(n2)) || (this.from.equals(n2) && this.to.equals(n1)); 
   }
 }
  
@@ -121,8 +136,11 @@ class HashUtils<T> {
 
 class MazeGame extends World{
   ArrayList<ArrayList<Node>> mazeBoard;
+  //hashmap that represents what each node's representative is
   HashMap<Node, Node> boardHash;
+  //the list of edges that creates the paths of the maze
   ArrayList<Edge> kruskalEdges;
+  //the list of edges that are not used in kruskal's algorithm, AKA the walls of the maze
 
   public MazeGame(int x, int y, Random rand) {
     //kruskalEdges and HashMap gets changed in makeConnectedBoard
@@ -167,10 +185,37 @@ class MazeGame extends World{
     this.kruskalEdges.sort(new CompareByWeight());
   }
   
+  //creates the edges that make up the paths that connects the entire maze
   public void makeMaze() {
     this.kruskalEdges = new KruskalMaze(this.boardHash, this.kruskalEdges).algorithm();
   }
   
+  //draws the maze
+  public WorldImage drawMaze() {
+    WorldImage bkg = new EmptyImage();
+    for(int i = 0 ; i < this.mazeBoard.size() ; i += 1) {
+      WorldImage row = new EmptyImage();
+      for(int j = 0 ; j < this.mazeBoard.get(i).size() ; j += 1) {
+        WorldImage cell = new RectangleImage(20,20, OutlineMode.SOLID, Color.white);
+        //if the cell to the left is not connected, create a cell with a wall to the left
+        if(j>0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i).get(j-1))) {
+          cell = new OverlayOffsetAlign(AlignModeX.LEFT, AlignModeY.MIDDLE, new RectangleImage(20,2, OutlineMode.SOLID, Color.black), 0, 0, cell);
+        }
+        //if the cell above this cell is not connected, create a cell with a wall above
+        if(i>0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i-1).get(j))) {
+          cell = new OverlayOffsetAlign(AlignModeX.CENTER, AlignModeY.TOP, new RectangleImage(2,20,OutlineMode.SOLID,Color.black), 0, 0, cell);
+        }
+        row = new BesideImage(row,cell);
+      }
+      bkg = new AboveImage(bkg, row);
+    }
+    return bkg;
+  }
+
+  @Override
+  public WorldScene makeScene() {
+    return null;
+  }
 }
 
 
