@@ -5,6 +5,8 @@ import java.util.Random;
 
 import tester.*;
 import javalib.impworld.*;
+import javalib.worldcanvas.WorldCanvas;
+
 import java.awt.Color;
 import javalib.worldimages.*;
 
@@ -47,18 +49,26 @@ class Node {
   //of the given weight
   //returns the edge that was created to connect the two nodes
   public Edge connect(Node other, int weight) {
-    return new Edge(this, other, weight);
+    Edge temp = new Edge(this, other, weight);
+    this.outedges.add(temp);
+    other.outedges.add(temp);
+    return temp;
   }
   
   //returns true if this node is connected to the given node
   //through any of its outedges
   public boolean isConnected(Node other) {
     for(Edge e : this.outedges) {
-      if(e.connects(this, other)) {
+      if(e.connectsThisToThat(this, other)) {
         return true;
       }
     }
     return false;
+  }
+  
+  //removes the given edge from this.outedges
+  public void remove(Edge e) {
+    this.outedges.remove(e);
   }
 }
 
@@ -76,8 +86,14 @@ class Edge {
   
   
   //returns true if this edge connects the two given Nodes
-  public boolean connects(Node n1, Node n2) {
+  public boolean connectsThisToThat(Node n1, Node n2) {
     return (this.from.equals(n1) && this.to.equals(n2)) || (this.from.equals(n2) && this.to.equals(n1)); 
+  }
+  
+  //removes this edge from both from and to
+  public void removeThisEdge() {
+    this.from.remove(this);
+    this.to.remove(this);
   }
 }
  
@@ -85,6 +101,8 @@ class KruskalMaze {
   HashMap<Node, Node> representatives;
   // all edges in graph, sorted by edge weights
   ArrayList<Edge> worklist;
+  // all edges that are not used in the algorithm
+  ArrayList<Edge> leftOver;
   
   KruskalMaze(HashMap<Node, Node> representatives, ArrayList<Edge> worklist) {
     this.representatives = representatives;
@@ -100,7 +118,7 @@ class KruskalMaze {
       Edge e = this.worklist.get(0);
       //checks to see if this edge creates a loop
       if (util.find(this.representatives, e.from).equals(util.find(this.representatives, e.to))) {
-        this.worklist.remove(0);
+        this.leftOver.add(this.worklist.remove(0));
       } else {
         resultEdges.add(e);
         util.union(this.representatives, 
@@ -109,9 +127,19 @@ class KruskalMaze {
         this.worklist.remove(0);
       }
     }
+    this.leftOver.addAll(this.worklist);
     return resultEdges;
   }
+  
+  //removes all of this.leftover from its connected parts
+  void removeAllLeftOver() {
+    for(Edge e : this.leftOver) {
+      e.removeThisEdge();
+    }
+  }
 }
+
+//this class is generalized even though it is only used in one specific case
 //utilities for Hashmaps for Nodes
 class HashUtils<T> {
   //returns the highest representative of the given node
@@ -124,12 +152,12 @@ class HashUtils<T> {
       return this.find(reps, reps.get(node));
     }
   }
-
  
   // sets rep1's representative to rep2
   void union(HashMap<T, T> reps, T rep1, T rep2) {
-    rep2 = this.find(reps, rep1);
+    reps.replace(rep1, rep2);
   }
+
 }
 
 //class that represents the Maze
@@ -147,7 +175,6 @@ class MazeGame extends World{
     this.kruskalEdges = new ArrayList<Edge>();
     this.boardHash = new HashMap<Node, Node>();
     this.mazeBoard = this.makeConnectedBoard(x, y, rand);
-    this.makeMaze();
   }
   
   public MazeGame(int x, int y) {
@@ -157,7 +184,7 @@ class MazeGame extends World{
   //creates the board with x length and y height 
   //where each cell is connected to each neighboring cell through an 
   //edge with a random length anywhere from 0 to 99
-  //also adds each edge to kruskal's edges
+  //also adds each edge to kruskal's edges and then, at the end, creates Kruskal's edges
   //and makes every node in the hashmap equal to itself for Kruskal's algo later
   public ArrayList<ArrayList<Node>> makeConnectedBoard(int x, int y, Random rand) {
     ArrayList<ArrayList<Node>> result = new ArrayList<ArrayList<Node>>();
@@ -177,18 +204,26 @@ class MazeGame extends World{
       }
       result.add(rowI);
     }
+    this.getKruskals();
+    
+    
     return result;
   }
   
   //sorts the edges to be put into kruskal's algorithm
-  public void sortEdges() {
+  public ArrayList<Edge> sortEdges() {
     this.kruskalEdges.sort(new CompareByWeight());
+    return this.kruskalEdges;
   }
   
-  //creates the edges that make up the paths that connects the entire maze
-  public void makeMaze() {
-    this.kruskalEdges = new KruskalMaze(this.boardHash, this.kruskalEdges).algorithm();
+  //EFFECT: creates the edges that make up the paths that connects the entire maze
+  //and removes all of the edges from the board that are not Kruskal's edges
+  public void getKruskals() {
+    KruskalMaze krusk = new KruskalMaze(this.boardHash, this.sortEdges());
+    this.kruskalEdges = krusk.algorithm();
+    
   }
+  
   
   //draws the maze
   public WorldImage drawMaze() {
@@ -214,7 +249,9 @@ class MazeGame extends World{
 
   @Override
   public WorldScene makeScene() {
-    return null;
+    WorldScene bkg = this.getEmptyScene();
+    bkg.placeImageXY(this.drawMaze(), this.mazeBoard.size()*10, this.mazeBoard.get(0).size()*10);
+    return bkg;
   }
 }
 
@@ -226,9 +263,16 @@ class CompareByWeight implements Comparator<Edge> {
   public int compare(Edge o1, Edge o2) {
     return o1.weight - o2.weight;
   }
-
-  
 }
 
+
+class ExampleMaze {
+  MazeGame g1 = new MazeGame(10,10);
+  
+  public boolean testMakeScene() {
+    WorldCanvas c = new WorldCanvas(1000,1000, "hello");
+    return c.drawScene(this.g1.makeScene()) && c.show();
+  }
+}
 
 
