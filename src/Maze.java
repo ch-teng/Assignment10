@@ -107,6 +107,7 @@ class KruskalMaze {
   KruskalMaze(HashMap<Node, Node> representatives, ArrayList<Edge> worklist) {
     this.representatives = representatives;
     this.worklist = worklist;
+    this.leftOver = new ArrayList<Edge>();
   }
   
   //Kruskal's Algorithm utilized for constructing the maze
@@ -166,19 +167,18 @@ class MazeGame extends World{
   ArrayList<ArrayList<Node>> mazeBoard;
   //hashmap that represents what each node's representative is
   HashMap<Node, Node> boardHash;
-  //the list of edges that creates the paths of the maze
-  ArrayList<Edge> kruskalEdges;
-  //the list of edges that are not used in kruskal's algorithm, AKA the walls of the maze
-
-  public MazeGame(int x, int y, Random rand) {
+  //one value that controls the size of the board
+  int squareSize;
+  
+  public MazeGame(int x, int y, int sqSize, Random rand) {
     //kruskalEdges and HashMap gets changed in makeConnectedBoard
-    this.kruskalEdges = new ArrayList<Edge>();
     this.boardHash = new HashMap<Node, Node>();
     this.mazeBoard = this.makeConnectedBoard(x, y, rand);
+    this.squareSize = sqSize;
   }
   
-  public MazeGame(int x, int y) {
-    this(x, y, new Random());
+  public MazeGame(int x, int y, int sqSize) {
+    this(x, y, sqSize, new Random());
   }
   
   //creates the board with x length and y height 
@@ -187,41 +187,40 @@ class MazeGame extends World{
   //also adds each edge to kruskal's edges and then, at the end, creates Kruskal's edges
   //and makes every node in the hashmap equal to itself for Kruskal's algo later
   public ArrayList<ArrayList<Node>> makeConnectedBoard(int x, int y, Random rand) {
-    ArrayList<ArrayList<Node>> result = new ArrayList<ArrayList<Node>>();
+    ArrayList<Edge> allEdges = new ArrayList<Edge>();
+    ArrayList<ArrayList<Node>> resultBoard = new ArrayList<ArrayList<Node>>();
     for(int i = 0 ; i < y ; i +=1) {
       ArrayList<Node> rowI = new ArrayList<Node>();
       for(int j = 0 ; j < x ; j +=1) {
         Node temp = new Node();
         rowI.add(temp);
+        //ensures that this node is added to the hashmap and maps to itself
         this.boardHash.put(temp, temp);
         //kruskalEdges starts with all of the edges in the list
         if(i > 0) {
-          this.kruskalEdges.add(temp.connect(result.get(i-1).get(j), rand.nextInt(100)));
+          allEdges.add(temp.connect(resultBoard.get(i-1).get(j), rand.nextInt(100)));
         }
         if(j > 0) {
-          this.kruskalEdges.add(temp.connect(rowI.get(j-1), rand.nextInt(100)));
+          allEdges.add(temp.connect(rowI.get(j-1), rand.nextInt(100)));
         }
       }
-      result.add(rowI);
+      resultBoard.add(rowI);
     }
-    this.getKruskals();
     
+    this.sortEdges(allEdges);
+    KruskalMaze kru = new KruskalMaze(this.boardHash, allEdges);
+    //creates a path through all of the cells, also filling the leftover field with
+    //all the unused connections between the neighbor nodes
+    kru.algorithm();
+    //removes all of the leftoverpaths that are not used in kruskal's algo
+    kru.removeAllLeftOver();
     
-    return result;
+    return resultBoard;
   }
   
   //sorts the edges to be put into kruskal's algorithm
-  public ArrayList<Edge> sortEdges() {
-    this.kruskalEdges.sort(new CompareByWeight());
-    return this.kruskalEdges;
-  }
-  
-  //EFFECT: creates the edges that make up the paths that connects the entire maze
-  //and removes all of the edges from the board that are not Kruskal's edges
-  public void getKruskals() {
-    KruskalMaze krusk = new KruskalMaze(this.boardHash, this.sortEdges());
-    this.kruskalEdges = krusk.algorithm();
-    
+  public void sortEdges(ArrayList<Edge> input) {
+    input.sort(new CompareByWeight());
   }
   
   
@@ -231,26 +230,27 @@ class MazeGame extends World{
     for(int i = 0 ; i < this.mazeBoard.size() ; i += 1) {
       WorldImage row = new EmptyImage();
       for(int j = 0 ; j < this.mazeBoard.get(i).size() ; j += 1) {
-        WorldImage cell = new RectangleImage(20,20, OutlineMode.SOLID, Color.white);
+        WorldImage cell = new RectangleImage(this.squareSize, this.squareSize, OutlineMode.SOLID, Color.gray);
         //if the cell to the left is not connected, create a cell with a wall to the left
-        if(j>0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i).get(j-1))) {
-          cell = new OverlayOffsetAlign(AlignModeX.LEFT, AlignModeY.MIDDLE, new RectangleImage(20,2, OutlineMode.SOLID, Color.black), 0, 0, cell);
+        if(j > 0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i).get(j-1))) {
+          cell = new OverlayOffsetAlign(AlignModeX.LEFT, AlignModeY.MIDDLE, new RectangleImage(1, this.squareSize, OutlineMode.SOLID, Color.black), 0, 0, cell);
         }
         //if the cell above this cell is not connected, create a cell with a wall above
-        if(i>0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i-1).get(j))) {
-          cell = new OverlayOffsetAlign(AlignModeX.CENTER, AlignModeY.TOP, new RectangleImage(2,20,OutlineMode.SOLID,Color.black), 0, 0, cell);
+        if(i > 0 && !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i-1).get(j))) {
+          cell = new OverlayOffsetAlign(AlignModeX.CENTER, AlignModeY.TOP, new RectangleImage(this.squareSize, 1, OutlineMode.SOLID,Color.black), 0, 0, cell);
         }
         row = new BesideImage(row,cell);
       }
       bkg = new AboveImage(bkg, row);
     }
+    //return new OverlayImage(bkg, new RectangleImage(this.mazeBoard.get(0).size()*this.squareSize+ 5, this.mazeBoard.size() * this.squareSize + 5, OutlineMode.SOLID, Color.black));
     return bkg;
   }
 
-  @Override
+  //makes the scene
   public WorldScene makeScene() {
     WorldScene bkg = this.getEmptyScene();
-    bkg.placeImageXY(this.drawMaze(), this.mazeBoard.size()*10, this.mazeBoard.get(0).size()*10);
+    bkg.placeImageXY(this.drawMaze(), this.mazeBoard.get(0).size()*this.squareSize/2 + 5, this.mazeBoard.size()*this.squareSize/2 + 5);
     return bkg;
   }
 }
@@ -267,10 +267,15 @@ class CompareByWeight implements Comparator<Edge> {
 
 
 class ExampleMaze {
-  MazeGame g1 = new MazeGame(10,10);
+  MazeGame g1;
   
-  public boolean testMakeScene() {
-    WorldCanvas c = new WorldCanvas(1000,1000, "hello");
+  void initConditions() {
+    this.g1 = new MazeGame(100, 60, 10);
+  }
+  
+  boolean testScene(Tester t) {
+    this.initConditions();
+    WorldCanvas c = new WorldCanvas(1500,1000);
     return c.drawScene(this.g1.makeScene()) && c.show();
   }
 }
