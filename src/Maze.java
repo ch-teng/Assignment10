@@ -186,7 +186,7 @@ class MazeGame extends World {
   public ArrayList<ArrayList<Node>> makeConnectedBoard(int x, int y, Random rand) {
     // hashmap that represents what each node's representative is
     HashMap<Node, Node> boardHash = new HashMap<Node, Node>();
-    // all of the edges in the boardd
+    // all of the edges in the board
     ArrayList<Edge> allEdges = new ArrayList<Edge>();
     ArrayList<ArrayList<Node>> resultBoard = new ArrayList<ArrayList<Node>>();
     for (int i = 0; i < y; i += 1) {
@@ -501,10 +501,10 @@ class ExamplesMaze {
     WorldImage cell2 = new RectangleImage(20, 20, OutlineMode.SOLID, Color.gray);
     WorldImage cell3 = new RectangleImage(20, 20, OutlineMode.SOLID, Color.gray);
     WorldImage cell4 = new RectangleImage(20, 20, OutlineMode.SOLID, Color.magenta);
-    
+
     if (!this.g4.mazeBoard.get(0).get(1).isConnected(this.g4.mazeBoard.get(0).get(0))) {
       cell2 = new OverlayOffsetAlign(AlignModeX.LEFT, AlignModeY.MIDDLE,
-          new RectangleImage(1, 20, OutlineMode.SOLID, Color.black), 0, 0, cell1);
+          new RectangleImage(1, 20, OutlineMode.SOLID, Color.black), 0, 0, cell2);
     }
     WorldImage row1 = new EmptyImage();
     row1 = new BesideImage(new BesideImage(row1, cell1), cell2);
@@ -519,36 +519,50 @@ class ExamplesMaze {
     }
     if (!this.g4.mazeBoard.get(1).get(1).isConnected(this.g4.mazeBoard.get(0).get(1))) {
       cell4 = new OverlayOffsetAlign(AlignModeX.CENTER, AlignModeY.TOP,
-          new RectangleImage(1, 20, OutlineMode.SOLID, Color.black), 0, 0, cell4);
+          new RectangleImage(20, 1, OutlineMode.SOLID, Color.black), 0, 0, cell4);
     }
 
     WorldImage row2 = new BesideImage(new BesideImage(row2Emp, cell3), cell4);
     WorldImage world = new AboveImage(new AboveImage(bkg, row1), row2);
     t.checkExpect(this.g4.drawMaze(), world);
-    /*
-     * DRAWBOARD method : for (int i = 0; i < this.mazeBoard.size(); i += 1) {
-     * WorldImage row = new EmptyImage(); for (int j = 0; j <
-     * this.mazeBoard.get(i).size(); j += 1) { WorldImage cell = new
-     * RectangleImage(this.squareSize, this.squareSize, OutlineMode.SOLID,
-     * Color.gray); // if the cell to the left is not connected, create a cell with
-     * a wall to the // left if (j > 0 &&
-     * !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i).get(j - 1)))
-     * { cell = new OverlayOffsetAlign(AlignModeX.LEFT, AlignModeY.MIDDLE, new
-     * RectangleImage(1, this.squareSize, OutlineMode.SOLID, Color.black), 0, 0,
-     * cell); } // if the cell above this cell is not connected, create a cell with
-     * a wall above if (i > 0 &&
-     * !this.mazeBoard.get(i).get(j).isConnected(this.mazeBoard.get(i - 1).get(j)))
-     * { cell = new OverlayOffsetAlign(AlignModeX.CENTER, AlignModeY.TOP, new
-     * RectangleImage(this.squareSize, 1, OutlineMode.SOLID, Color.black), 0, 0,
-     * cell); } row = new BesideImage(row, cell); } bkg = new AboveImage(bkg, row);
-     * }
-     */
   }
 
-  /*
-   * boolean testScene(Tester t) { this.initConditions(); WorldCanvas c = new
-   * WorldCanvas(this.getMazeWidth(), this.getMazeHeight()); return
-   * c.drawScene(this.g4.makeScene()) && c.show(); }
-   */
+  // tests the MakeConnectedBoard
+  void testMakeConnectedBoard(Tester t) {
+    this.initConditions();
+    // needs to test to make sure that each node connects to each other node
+    // the use of g1 is unrelated to the connectedBoard method
+    ArrayList<ArrayList<Node>> test1 = this.g1.makeConnectedBoard(4, 3, new Random(0));
+    t.checkExpect(test1.size(), 3);
+    t.checkExpect(test1.get(0).size(), 4);
+    //testing that the total number of edges is equal to the number of nodes - 1
+    int count1 = 0;
+    for(ArrayList<Node> arrNodes : test1) {
+      for(Node n : arrNodes) {
+        count1 += n.outedges.size();
+      }
+    }
+    //must divide count by two since each edge will be counted twice, once at every node it connects
+    t.checkExpect(count1/2, 11);
+    
+    ArrayList<ArrayList<Node>> test2 = this.g1.makeConnectedBoard(100, 60, new Random(0));
+    t.checkExpect(test2.size(), 60);
+    t.checkExpect(test2.get(0).size(), 100);
+    //testing that the total number of edges is equal to the number of nodes - 1
+    int count2 = 0;
+    for(ArrayList<Node> arrNodes : test2) {
+      for(Node n : arrNodes) {
+        count2 += n.outedges.size();
+      }
+    }
+    //must divide count by two since each edge will be counted twice, once at every node it connects
+    t.checkExpect(count2/2, 5999);
+  }
+
+  boolean testScene(Tester t) {
+    this.initConditions();
+    WorldCanvas c = new WorldCanvas(this.g2.getMazeWidth(), this.g2.getMazeHeight());
+    return c.drawScene(this.g2.makeScene()) && c.show();
+  }
 
 }
