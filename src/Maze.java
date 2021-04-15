@@ -165,14 +165,10 @@ class HashUtils<T> {
 
 class MazeGame extends World{
   ArrayList<ArrayList<Node>> mazeBoard;
-  //hashmap that represents what each node's representative is
-  HashMap<Node, Node> boardHash;
   //one value that controls the size of the board
   int squareSize;
   
   public MazeGame(int x, int y, int sqSize, Random rand) {
-    //kruskalEdges and HashMap gets changed in makeConnectedBoard
-    this.boardHash = new HashMap<Node, Node>();
     this.mazeBoard = this.makeConnectedBoard(x, y, rand);
     this.squareSize = sqSize;
   }
@@ -187,6 +183,9 @@ class MazeGame extends World{
   //also adds each edge to kruskal's edges and then, at the end, creates Kruskal's edges
   //and makes every node in the hashmap equal to itself for Kruskal's algo later
   public ArrayList<ArrayList<Node>> makeConnectedBoard(int x, int y, Random rand) {
+    //hashmap that represents what each node's representative is
+    HashMap<Node, Node> boardHash = new HashMap<Node,Node>();
+    //all of the edges in the boardd
     ArrayList<Edge> allEdges = new ArrayList<Edge>();
     ArrayList<ArrayList<Node>> resultBoard = new ArrayList<ArrayList<Node>>();
     for(int i = 0 ; i < y ; i +=1) {
@@ -195,7 +194,7 @@ class MazeGame extends World{
         Node temp = new Node();
         rowI.add(temp);
         //ensures that this node is added to the hashmap and maps to itself
-        this.boardHash.put(temp, temp);
+        boardHash.put(temp, temp);
         //kruskalEdges starts with all of the edges in the list
         if(i > 0) {
           allEdges.add(temp.connect(resultBoard.get(i-1).get(j), rand.nextInt(100)));
@@ -208,7 +207,7 @@ class MazeGame extends World{
     }
     
     this.sortEdges(allEdges);
-    KruskalMaze kru = new KruskalMaze(this.boardHash, allEdges);
+    KruskalMaze kru = new KruskalMaze(boardHash, allEdges);
     //creates a path through all of the cells, also filling the leftover field with
     //all the unused connections between the neighbor nodes
     kru.algorithm();
@@ -250,9 +249,20 @@ class MazeGame extends World{
   //makes the scene
   public WorldScene makeScene() {
     WorldScene bkg = this.getEmptyScene();
-    bkg.placeImageXY(this.drawMaze(), this.mazeBoard.get(0).size()*this.squareSize/2 + 5, this.mazeBoard.size()*this.squareSize/2 + 5);
+    bkg.placeImageXY(this.drawMaze(), this.getMazeWidth()/2, this.getMazeHeight()/2);
     return bkg;
   }
+  
+  //returns the width of the screen for the current maze game
+  public int getMazeWidth() {
+    return this.mazeBoard.get(0).size() * this.squareSize;
+  }
+  
+//returns the height of the screen for the current maze game
+  public int getMazeHeight() {
+    return this.mazeBoard.size() * this.squareSize;
+  }
+  
 }
 
 
@@ -270,12 +280,12 @@ class ExampleMaze {
   MazeGame g1;
   
   void initConditions() {
-    this.g1 = new MazeGame(100, 60, 10);
+    this.g1 = new MazeGame(250, 200,4);
   }
   
   boolean testScene(Tester t) {
     this.initConditions();
-    WorldCanvas c = new WorldCanvas(1500,1000);
+    WorldCanvas c = new WorldCanvas(this.g1.getMazeWidth(),this.g1.getMazeHeight());
     return c.drawScene(this.g1.makeScene()) && c.show();
   }
 }
