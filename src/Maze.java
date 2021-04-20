@@ -266,8 +266,55 @@ class MazeGame extends World {
     input.sort(new CompareByWeight());
   }
 
+  //makes all the cells in this board grey, except the first and last
+  public void grayBoard() {
+    for(ArrayList<Node> arrNode: this.mazeBoard) {
+      for(Node n : arrNode) {
+        n.color = Color.gray;
+      }
+    }
+    this.mazeBoard.get(0).get(0).color = Color.red;
+    this.mazeBoard.get(this.mazeBoard.size()-1).get(this.mazeBoard.get(0).size()-1).color = Color.magenta;
+  }
+  
   // controls
+  //the user can switch between manual solving the current board, DFS, or BFS
+  //Or, they can just reset the board to an entirely new maze of the same size with "r"
   public void onKeyEvent(String key) {
+    if(key.equals("r")) {
+      this.mazeBoard = this.makeConnectedBoard(this.mazeBoard.get(0).size(), this.mazeBoard.size(), new Random());
+      this.curX = 0;
+      this.curY = 0;
+      this.nodesVisited = new ArrayList<Node>();
+      if(this.gameType == 2) {
+        this.worklistSearch = new Stack<Node>();
+        this.worklistSearch.add(this.mazeBoard.get(0).get(0));
+      } else if(this.gameType == 3){
+        this.worklistSearch = new Queue<Node>();
+        this.worklistSearch.add(this.mazeBoard.get(0).get(0));
+      }
+      this.cameFromEdge = new HashMap<Node, Edge>();
+      this.alreadySeen = new ArrayList<Node>();
+    } else if (key.equals("1") && this.gameType != 1) {
+      this.gameType = 1;
+      this.nodesVisited = new ArrayList<Node>();
+      this.grayBoard();
+    } else if (key.equals("2") && this.gameType != 2) {
+      this.gameType = 2;
+      this.nodesVisited = new ArrayList<Node>();
+      this.worklistSearch = new Stack<Node>();
+      this.worklistSearch.add(this.mazeBoard.get(0).get(0));
+      this.alreadySeen = new ArrayList<Node>();
+      this.grayBoard();
+    } else if (key.equals("3") && this.gameType != 3) {
+      this.gameType = 3;
+      this.nodesVisited = new ArrayList<Node>();
+      this.worklistSearch = new Queue<Node>();
+      this.worklistSearch.add(this.mazeBoard.get(0).get(0));
+      this.alreadySeen = new ArrayList<Node>();
+      this.grayBoard();
+    }
+    
     if (this.gameType == 1) {
       Node currNode = this.mazeBoard.get(this.curY).get(this.curX);
       Node nextNode;
@@ -955,7 +1002,7 @@ class ExamplesMaze {
 
   void testBigBang(Tester t) { 
     this.initConditions();
-    MazeGame current = this.g1;
+    MazeGame current = this.g5;
     current.bigBang(current.getMazeWidth(), current.getMazeHeight(), .01); 
     }
 
