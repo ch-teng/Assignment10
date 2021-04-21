@@ -86,14 +86,16 @@ class Edge {
     this.from.remove(this);
     this.to.remove(this);
   }
-  
-  //returns the other node that this edge connects to
+
+  // returns the other node that this edge connects to
   public Node otherNode(Node curr) {
-    if(this.to.equals(curr)) {
+    if (this.to.equals(curr)) {
       return this.from;
-    } else if (this.from.equals(curr)) {
+    }
+    else if (this.from.equals(curr)) {
       return this.to;
-    } else {
+    }
+    else {
       throw new RuntimeException("given node is not a part of this edge");
     }
   }
@@ -170,47 +172,61 @@ class MazeGame extends World {
   ArrayList<ArrayList<Node>> mazeBoard;
   // one value that controls the size of the board
   int squareSize;
-  
-  //these fields are only used for gametype 1
+
+  // these fields are only used for gametype 1
   int curX;
   int curY;
-  
-  //this field is used for all gametypes 
+
+  // this field is used for all gametypes
   ArrayList<Node> nodesVisited;
-  //input should be 1: manual, 2: DFS, 3: BFS
+  // input should be 1: manual, 2: DFS, 3: BFS
   int gameType;
-  
-  //these fields are only used for gametypes 2 and 3
+
+  // these fields are only used for gametypes 2 and 3
   ICollection<Node> worklistSearch;
   HashMap<Node, Edge> cameFromEdge;
-  ArrayList<Node> alreadySeen;
+  
+  //for BFS, you can toggle multisearch, which clears all node in the worklist
+  //in one tick, rather than just one node
+  boolean multiSearch;
 
-  public MazeGame(int x, int y, int sqSize, Random rand, int gameType) {
+  
+  //INPUTS
+  //x and y represent the height and width of the maze to be created
+  //sqSize represents the size of each node that is drawn, to be adjusted so that the board fits on screen
+  //rand is a random value generator used to determine the weight of the edges on the board
+  //gameType represents how the maze will be solved (1 for manual, 2 for DFS, 3 for BFS)
+  //any other entries will throw an exception
+  //finally, multiSearch is a boolean flag to toggle on or off evaluating all the elements in the 
+  //worklist, only does anything for BFS search
+  
+  public MazeGame(int x, int y, int sqSize, Random rand, int gameType, boolean multiSearch) {
     this.mazeBoard = this.makeConnectedBoard(x, y, rand);
     this.squareSize = sqSize;
     this.curX = 0;
     this.curY = 0;
     this.nodesVisited = new ArrayList<Node>();
-    if(gameType < 1 || gameType > 3) {
+    if (gameType < 1 || gameType > 3) {
       throw new RuntimeException("Invalid game type");
-    } else {
+    }
+    else {
       this.gameType = gameType;
     }
-    if(this.gameType == 2) {
+    if (this.gameType == 2) {
       this.worklistSearch = new Stack<Node>();
       this.worklistSearch.add(this.mazeBoard.get(0).get(0));
-    } else if(this.gameType == 3){
+    }
+    else if (this.gameType == 3) {
       this.worklistSearch = new Queue<Node>();
       this.worklistSearch.add(this.mazeBoard.get(0).get(0));
     }
     this.cameFromEdge = new HashMap<Node, Edge>();
-    this.alreadySeen = new ArrayList<Node>();
     
-    
+    this.multiSearch = multiSearch;
   }
 
-  public MazeGame(int x, int y, int sqSize, int gameType) {
-    this(x, y, sqSize, new Random(), gameType);
+  public MazeGame(int x, int y, int sqSize, int gameType, boolean multiSearch) {
+    this(x, y, sqSize, new Random(), gameType, multiSearch);
   }
 
   // creates the board with x length and y height
@@ -266,62 +282,75 @@ class MazeGame extends World {
     input.sort(new CompareByWeight());
   }
 
-  //makes all the cells in this board grey, except the first and last
+  // makes all the cells in this board grey, except the first and last
   public void grayBoard() {
-    for(ArrayList<Node> arrNode: this.mazeBoard) {
-      for(Node n : arrNode) {
+    for (ArrayList<Node> arrNode : this.mazeBoard) {
+      for (Node n : arrNode) {
         n.color = Color.gray;
       }
     }
     this.mazeBoard.get(0).get(0).color = Color.red;
-    this.mazeBoard.get(this.mazeBoard.size()-1).get(this.mazeBoard.get(0).size()-1).color = Color.magenta;
+    this.mazeBoard.get(this.mazeBoard.size() - 1)
+        .get(this.mazeBoard.get(0).size() - 1).color = Color.magenta;
   }
-  
-  // controls
-  //the user can switch between manual solving the current board, DFS, or BFS
-  //Or, they can just reset the board to an entirely new maze of the same size with "r"
+
+  // CONTROLS
+  // if in gametype 1, the user can use arrow keys to solve the maze by themselves
+  // the user can switch between manual solving the current board, DFS, or BFS
+  // OTHER CONTROLS
+  // "r" = creates a new board of the same size 
+  // (we didnt creating other board sizes in game because it would not fit in the custom window size)
+  // "1" = resets the current maze, allowing the user to manually solve it
+  // "2" = resets the current maze, beginning to solve it with Depth First Search
+  // "3" = resets the current maze, beginning to solve it with Breadth First Search
+  // "w" = changes the boolean flag for multiSearch, only works when doing Breadth First Search (gameType 3)
   public void onKeyEvent(String key) {
-    if(key.equals("r")) {
-      this.mazeBoard = this.makeConnectedBoard(this.mazeBoard.get(0).size(), this.mazeBoard.size(), new Random());
+    if (key.equals("r")) {
+      this.mazeBoard = this.makeConnectedBoard(this.mazeBoard.get(0).size(), this.mazeBoard.size(),
+          new Random());
       this.curX = 0;
       this.curY = 0;
       this.nodesVisited = new ArrayList<Node>();
-      if(this.gameType == 2) {
+      if (this.gameType == 2) {
         this.worklistSearch = new Stack<Node>();
         this.worklistSearch.add(this.mazeBoard.get(0).get(0));
-      } else if(this.gameType == 3){
+      }
+      else if (this.gameType == 3) {
         this.worklistSearch = new Queue<Node>();
         this.worklistSearch.add(this.mazeBoard.get(0).get(0));
       }
       this.cameFromEdge = new HashMap<Node, Edge>();
-      this.alreadySeen = new ArrayList<Node>();
-    } else if (key.equals("1") && this.gameType != 1) {
+    }
+    else if (key.equals("1") && this.gameType != 1) {
       this.gameType = 1;
       this.nodesVisited = new ArrayList<Node>();
       this.grayBoard();
-    } else if (key.equals("2") && this.gameType != 2) {
+    }
+    else if (key.equals("2") && this.gameType != 2) {
       this.gameType = 2;
       this.nodesVisited = new ArrayList<Node>();
       this.worklistSearch = new Stack<Node>();
       this.worklistSearch.add(this.mazeBoard.get(0).get(0));
-      this.alreadySeen = new ArrayList<Node>();
       this.grayBoard();
-    } else if (key.equals("3") && this.gameType != 3) {
+    }
+    else if (key.equals("3") && this.gameType != 3) {
       this.gameType = 3;
       this.nodesVisited = new ArrayList<Node>();
       this.worklistSearch = new Queue<Node>();
       this.worklistSearch.add(this.mazeBoard.get(0).get(0));
-      this.alreadySeen = new ArrayList<Node>();
       this.grayBoard();
     }
-    
+    else if (key.equals("w") && this.gameType == 3) {
+      this.multiSearch = !this.multiSearch;
+    }
+
     if (this.gameType == 1) {
       Node currNode = this.mazeBoard.get(this.curY).get(this.curX);
       Node nextNode;
       if (key.equals("down") && this.curY < this.mazeBoard.size()) {
         nextNode = this.mazeBoard.get(this.curY + 1).get(this.curX);
         if (currNode.isConnected(this.mazeBoard.get(this.curY + 1).get(this.curX))) {
-          if (this.nodesVisited.contains(nextNode)) {
+          if (nextNode.color.equals(Color.white)) {
             this.nodesVisited.remove(nextNode);
           }
           else {
@@ -335,7 +364,7 @@ class MazeGame extends World {
       if (key.equals("up") && this.curY > 0) {
         nextNode = this.mazeBoard.get(this.curY - 1).get(this.curX);
         if (currNode.isConnected(nextNode)) {
-          if (this.nodesVisited.contains(nextNode)) {
+          if (nextNode.color.equals(Color.white)) {
             this.nodesVisited.remove(nextNode);
           }
           else {
@@ -349,7 +378,7 @@ class MazeGame extends World {
       if (key.equals("left") && this.curX > 0) {
         nextNode = this.mazeBoard.get(this.curY).get(this.curX - 1);
         if (currNode.isConnected(this.mazeBoard.get(this.curY).get(this.curX - 1))) {
-          if (this.nodesVisited.contains(nextNode)) {
+          if (nextNode.color.equals(Color.white)) {
             this.nodesVisited.remove(nextNode);
           }
           else {
@@ -363,7 +392,7 @@ class MazeGame extends World {
       if (key.equals("right") && this.curX < this.mazeBoard.get(0).size()) {
         nextNode = this.mazeBoard.get(this.curY).get(this.curX + 1);
         if (currNode.isConnected(this.mazeBoard.get(this.curY).get(this.curX + 1))) {
-          if (this.nodesVisited.contains(nextNode)) {
+          if (nextNode.color.equals(Color.white)) {
             this.nodesVisited.remove(nextNode);
           }
           else {
@@ -385,7 +414,7 @@ class MazeGame extends World {
       n.color = Color.green;
     }
     WorldScene bkg = this.makeScene();
-    bkg.placeImageXY(new TextImage("You Win!", Color.white), this.getMazeHeight() / 2,
+    bkg.placeImageXY(new TextImage("You Win!", Color.blue), this.getMazeHeight() / 2,
         this.getMazeWidth() / 2);
     return bkg;
   }
@@ -438,48 +467,71 @@ class MazeGame extends World {
     return this.mazeBoard.size() * this.squareSize;
   }
 
-  
-
-  
   void searchHelp() {
+    Node next = this.worklistSearch.remove();
+    next.color = Color.white;
+    if (next.equals(
+        this.mazeBoard.get(this.mazeBoard.size() - 1).get(this.mazeBoard.get(0).size() - 1))) {
+      this.reconstruct(next); // Success!
+    } else {
+      // add all the neighbors of next to the worklist for further processing
+      for (Edge e : next.outedges) {
+        Node other = e.otherNode(next);
+        if (other.color.equals(Color.white)) {
+
+        } else {
+          this.worklistSearch.add(other);
+          e.otherNode(next).color = Color.red;
+          this.cameFromEdge.put(other, e);
+        }
+      }
+    }
+  }
+  //searchHelp used for BFS to make each tick evaluate the whole worklist
+  void multiSearchHelp() {
+    ICollection<Node> temp = new Queue<Node>();
+    while (!this.worklistSearch.isEmpty()) {
       Node next = this.worklistSearch.remove();
       next.color = Color.white;
-      if (next.equals(this.mazeBoard.get(this.mazeBoard.size()-1).get(this.mazeBoard.get(0).size()-1))) {
+      if (next.equals(
+          this.mazeBoard.get(this.mazeBoard.size() - 1).get(this.mazeBoard.get(0).size() - 1))) {
         this.reconstruct(next); // Success!
-      } else {
+      }else {
         // add all the neighbors of next to the worklist for further processing
         for (Edge e : next.outedges) {
           Node other = e.otherNode(next);
-          if(this.alreadySeen.contains(other)) {
-            
+          if (other.color.equals(Color.white)) {
           } else {
-            this.worklistSearch.add(other);
+            temp.add(other);
             e.otherNode(next).color = Color.red;
             this.cameFromEdge.put(other, e);
           }
         }
-        // add next to alreadySeen, since we're done with it
-        this.alreadySeen.add(next);
       }
+    }
+    this.worklistSearch = temp;
   }
-  
+
   // reconstructs the path taken to get to the end
   void reconstruct(Node end) {
     this.nodesVisited.add(end);
-    if(end.equals(this.mazeBoard.get(0).get(0))) {
+    if (end.equals(this.mazeBoard.get(0).get(0))) {
       this.endOfWorld("You Win!");
-    } else {
+    }
+    else {
       this.reconstruct(this.cameFromEdge.get(end).otherNode(end));
     }
   }
-  
-    public void onTick() {
-      if(this.gameType == 1) {
-        return;
-      } else {
-        this.searchHelp();
-      }
+
+  public void onTick() {
+    if (this.gameType == 1) {
+      return;
+    } else if (this.gameType == 3 && this.multiSearch) {
+      this.multiSearchHelp();
+    } else {
+      this.searchHelp();
     }
+  }
 }
 
 class CompareByWeight implements Comparator<Edge> {
@@ -525,22 +577,23 @@ class Queue<T> implements ICollection<T> {
 
 class Stack<T> implements ICollection<T> {
   Deque<T> contents;
-  
+
   Stack() {
     this.contents = new Deque<T>();
   }
+
   public boolean isEmpty() {
     return this.contents.isEmpty();
   }
+
   public T remove() {
     return this.contents.removeFromHead();
   }
+
   public void add(T item) {
     this.contents.addAtHead(item);
   }
 }
-
-
 
 //represents a Deque with a header that consists of the Sentinel node
 class Deque<T> {
@@ -674,7 +727,6 @@ class DequeNode<T> extends ANode<T> {
   }
 
 }
- 
 
 //represents examples for the maze;
 class ExamplesMaze {
@@ -745,11 +797,11 @@ class ExamplesMaze {
     edges1 = new ArrayList<Edge>(Arrays.asList(this.edge2, this.edge3, this.edge1));
     edges2 = new ArrayList<Edge>(Arrays.asList(this.edge8, this.edge5, this.edge7, this.edge6));
 
-    g1 = new MazeGame(100, 60, 10, 2);
-    g2 = new MazeGame(20, 20, 20, 1);
-    g3 = new MazeGame(50, 50, 20, 1);
-    g4 = new MazeGame(2, 2, 20, 1);
-    g5 = new MazeGame(40, 40, 10, 2);
+    g1 = new MazeGame(100, 60, 10, 2, false);
+    g2 = new MazeGame(20, 20, 20, 1, false);
+    g3 = new MazeGame(50, 50, 20, 1, false);
+    g4 = new MazeGame(2, 2, 20, 1, false);
+    g5 = new MazeGame(60, 60, 10, 2, false);
 
     reps = new HashMap<Node, Node>();
     reps2 = new HashMap<Node, Node>();
@@ -1000,10 +1052,10 @@ class ExamplesMaze {
 //    return c.drawScene(this.g2.makeScene()) && c.show();
 //  }
 
-  void testBigBang(Tester t) { 
+  void testBigBang(Tester t) {
     this.initConditions();
     MazeGame current = this.g5;
-    current.bigBang(current.getMazeWidth(), current.getMazeHeight(), .01); 
-    }
+    current.bigBang(current.getMazeWidth(), current.getMazeHeight(), .01);
+  }
 
 }
